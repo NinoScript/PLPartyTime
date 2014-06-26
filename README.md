@@ -1,3 +1,8 @@
+## What's this fork about?
+
+PLPartyTime tries to do more than I want it to.
+It should only manage the discovery portions of my session, and let me define my own MCSessionDelegate.
+
 ## NOTE
 
 This library isn't really production ready yet. It's not yet very well tested and has some pretty annoying bugs. Most of these revolve around the weirdness of the multipeer framework. It's a work in progress, and hopefully will come together soon.
