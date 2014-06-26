@@ -8,42 +8,41 @@
 
 #import "PLPartyTime.h"
 
-
-@interface PLPartyTime () <MCSessionDelegate, MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate>
+@interface PLPartyTime () <MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate>
 
 // Public Properties
 @property (nonatomic, readwrite) BOOL connected;
 @property (nonatomic, readwrite) BOOL acceptingGuests;
 @property (nonatomic, readwrite, strong) NSString *serviceType;
-@property (nonatomic, readwrite, strong) NSString *displayName;
 
-@property (nonatomic, strong) MCSession *session;
-@property (nonatomic, strong) MCPeerID *peerID;
-@property (nonatomic, strong) MCNearbyServiceAdvertiser *advertiser;
-@property (nonatomic, strong) MCNearbyServiceBrowser *browser;
+// External Properties
+@property (nonatomic, strong) MCSession* session;
+@property (nonatomic, strong) MCPeerID* peerID;
+
+// Internal Properties
+@property (nonatomic, strong) MCNearbyServiceAdvertiser* advertiser;
+@property (nonatomic, strong) MCNearbyServiceBrowser* browser;
 
 @end
 
 @implementation PLPartyTime
 
 #pragma mark - Life Cycle
-
-- (instancetype)initWithServiceType:(NSString *)serviceType
+- (instancetype)initWithServiceType:(NSString*)serviceType
+                            session:(MCSession*)session
+                             peerID:(MCPeerID*)peerID
 {
-  return [self initWithServiceType:serviceType
-                       displayName:[UIDevice currentDevice].name];
-}
+    NSParameterAssert(serviceType);
+    NSParameterAssert(session);
+    NSParameterAssert(peerID);
 
-- (instancetype)initWithServiceType:(NSString *)serviceType
-                        displayName:(NSString *)displayName
-{
-  self = [super init];
-  if (self)
-  {
-    self.serviceType = serviceType;
-    self.displayName = displayName;
-  }
-  return self;
+    self = [super init];
+    if (self) {
+        self.session = session;
+        self.peerID = peerID;
+        self.serviceType = serviceType;
+    }
+    return self;
 }
 
 - (void)dealloc
@@ -80,174 +79,38 @@
 
 - (void)leaveParty
 {
-  [self stopAcceptingGuests];
-  [self.session disconnect];
-  // Must nil out these because if we try to reconnect, we need to recreate them
-  // Else it fails to connect
-  self.session = nil;
-  self.peerID = nil;
-  self.advertiser = nil;
-  self.browser = nil;
-  self.connected = NO;
-}
-
-#pragma mark - Communicate
-
-- (BOOL)sendData:(NSData *)data
-        withMode:(MCSessionSendDataMode)mode
-           error:(NSError **)error
-{
-  return [self.session sendData:data
-                        toPeers:self.session.connectedPeers
-                       withMode:mode
-                          error:error];
-}
-
-- (BOOL)sendData:(NSData *)data
-         toPeers:(NSArray *)peerIDs
-        withMode:(MCSessionSendDataMode)mode
-           error:(NSError **)error
-{
-  return [self.session sendData:data
-                        toPeers:peerIDs
-                       withMode:mode
-                          error:error];
-}
-
-- (NSOutputStream *)startStreamWithName:(NSString *)streamName
-                                 toPeer:(MCPeerID *)peerID
-                                  error:(NSError *__autoreleasing *)error
-{
-  return [self.session startStreamWithName:streamName
-                                    toPeer:peerID
-                                     error:error];
-}
-
-- (NSProgress *)sendResourceAtURL:(NSURL *)resourceURL
-                         withName:(NSString *)resourceName
-                           toPeer:(MCPeerID *)peerID
-            withCompletionHandler:(void (^)(NSError *error))completionHandler
-{
-  return [self.session sendResourceAtURL:resourceURL
-                                withName:resourceName
-                                  toPeer:peerID
-                   withCompletionHandler:completionHandler];
+    [self stopAcceptingGuests];
+    //    [self.session disconnect];
+    // Must nil out these because if we try to reconnect, we need to recreate them
+    // Else it fails to connect
+    self.advertiser = nil;
+    self.browser = nil;
+    self.connected = NO;
 }
 
 #pragma mark - Properties
 
-- (NSArray *)connectedPeers
+- (MCNearbyServiceAdvertiser*)advertiser
 {
-  return self.session.connectedPeers;
-}
-
-- (MCSession *)session
-{
-  if (!_session)
-  {
-    _session = [[MCSession alloc] initWithPeer:self.peerID
-                              securityIdentity:nil
-                          encryptionPreference:MCEncryptionRequired];
-    _session.delegate = self;
-  }
-  return _session;
-}
-
-- (MCPeerID *)peerID
-{
-  if (!_peerID)
-  {
-    NSAssert(self.displayName, @"No display name. You must initialize this class using the custom intializers.");
-    _peerID = [[MCPeerID alloc] initWithDisplayName:self.displayName];
-  }
-  return _peerID;
-}
-
-- (MCNearbyServiceAdvertiser *)advertiser
-{
-  if (!_advertiser)
-  {
-    NSAssert(self.serviceType, @"No service type. You must initialize this class using the custom intializers.");
-    _advertiser = [[MCNearbyServiceAdvertiser alloc] initWithPeer:self.peerID
-                                                    discoveryInfo:nil
-                                                      serviceType:self.serviceType];
-    _advertiser.delegate = self;
-  }
-  return _advertiser;
-}
-
-- (MCNearbyServiceBrowser *)browser
-{
-  if (!_browser)
-  {
-    NSAssert(self.serviceType, @"No service type. You must initialize this class using the custom intializers.");
-    _browser = [[MCNearbyServiceBrowser alloc] initWithPeer:self.peerID
-                                                serviceType:self.serviceType];
-    _browser.delegate = self;
-  }
-  return _browser;
-}
-
-#pragma mark - Session Delegate
-
-- (void)session:(MCSession *)session peer:(MCPeerID *)peerID didChangeState:(MCSessionState)state
-{
-  dispatch_async(dispatch_get_main_queue(), ^{
-    [self.delegate partyTime:self peer:peerID changedState:state currentPeers:self.session.connectedPeers];
-  });
-}
-
-- (void)session:(MCSession *)session didReceiveData:(NSData *)data fromPeer:(MCPeerID *)peerID
-{
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if ([self.delegate respondsToSelector:@selector(partyTime:didReceiveData:fromPeer:)])
-    {
-      [self.delegate partyTime:self didReceiveData:data fromPeer:peerID];
+    if (!_advertiser) {
+        NSAssert(self.serviceType, @"No service type. You must initialize this class using the custom intializers.");
+        _advertiser = [[MCNearbyServiceAdvertiser alloc] initWithPeer:self.peerID
+                                                        discoveryInfo:nil
+                                                          serviceType:self.serviceType];
+        _advertiser.delegate = self;
     }
-  });
+    return _advertiser;
 }
 
-- (void)session:(MCSession *)session didReceiveStream:(NSInputStream *)stream withName:(NSString *)streamName fromPeer:(MCPeerID *)peerID
+- (MCNearbyServiceBrowser*)browser
 {
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if ([self.delegate respondsToSelector:@selector(partyTime:didReceiveStream:withName:fromPeer:)])
-    {
-      [self.delegate partyTime:self didReceiveStream:stream withName:streamName fromPeer:peerID];
+    if (!_browser) {
+        NSAssert(self.serviceType, @"No service type. You must initialize this class using the custom intializers.");
+        _browser = [[MCNearbyServiceBrowser alloc] initWithPeer:self.peerID
+                                                    serviceType:self.serviceType];
+        _browser.delegate = self;
     }
-  });
-}
-
-- (void)session:(MCSession *)session didStartReceivingResourceWithName:(NSString *)resourceName fromPeer:(MCPeerID *)peerID withProgress:(NSProgress *)progress
-{
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if ([self.delegate respondsToSelector:@selector(partyTime:didStartReceivingResourceWithName:fromPeer:withProgress:)])
-    {
-      [self.delegate partyTime:self
-didStartReceivingResourceWithName:resourceName
-                      fromPeer:peerID
-                  withProgress:progress];
-    }
-  });
-}
-
-- (void)session:(MCSession *)session didFinishReceivingResourceWithName:(NSString *)resourceName fromPeer:(MCPeerID *)peerID atURL:(NSURL *)localURL withError:(NSError *)error
-{
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if ([self.delegate respondsToSelector:@selector(partyTime:didFinishReceivingResourceWithName:fromPeer:atURL:withError:)])
-    {
-      [self.delegate partyTime:self
-didFinishReceivingResourceWithName:resourceName
-                      fromPeer:peerID
-                         atURL:localURL
-                     withError:error];
-    }
-  });
-}
-
-// Required because of an apple bug
-- (void)session:(MCSession *)session didReceiveCertificate:(NSArray *)certificate fromPeer:(MCPeerID *)peerID certificateHandler:(void(^)(BOOL accept))certificateHandler
-{
-  certificateHandler(YES);
+    return _browser;
 }
 
 #pragma mark - Advertiser Delegate
