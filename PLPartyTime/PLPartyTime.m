@@ -13,7 +13,7 @@
 // Public Properties
 @property (nonatomic, readwrite) BOOL connected;
 @property (nonatomic, readwrite) BOOL acceptingGuests;
-@property (nonatomic, readwrite, strong) NSString *serviceType;
+@property (nonatomic, readwrite, strong) NSString* serviceType;
 
 // External Properties
 @property (nonatomic, strong) MCSession* session;
@@ -47,34 +47,32 @@
 
 - (void)dealloc
 {
-  // Will clean up the session and browsers properly
-  [self leaveParty];
+    // Will clean up the session and browsers properly
+    [self leaveParty];
 }
 
 #pragma mark - Membership
 
 - (void)joinParty
 {
-  // If we're already joined, then don't try again. This causes crashes.
-  if (!self.acceptingGuests)
-  {
-    // Simultaneously advertise and browse at the same time
-    [self.advertiser startAdvertisingPeer];
-    [self.browser startBrowsingForPeers];
-    
-    self.connected = YES;
-    self.acceptingGuests = YES;
-  }
+    // If we're already joined, then don't try again. This causes crashes.
+    if (!self.acceptingGuests) {
+        // Simultaneously advertise and browse at the same time
+        [self.advertiser startAdvertisingPeer];
+        [self.browser startBrowsingForPeers];
+
+        self.connected = YES;
+        self.acceptingGuests = YES;
+    }
 }
 
 - (void)stopAcceptingGuests
 {
-  if (self.acceptingGuests)
-  {
-    [self.advertiser stopAdvertisingPeer];
-    [self.browser stopBrowsingForPeers];
-    self.acceptingGuests = NO;
-  }
+    if (self.acceptingGuests) {
+        [self.advertiser stopAdvertisingPeer];
+        [self.browser stopBrowsingForPeers];
+        self.acceptingGuests = NO;
+    }
 }
 
 - (void)leaveParty
@@ -115,52 +113,49 @@
 
 #pragma mark - Advertiser Delegate
 
-- (void)advertiser:(MCNearbyServiceAdvertiser *)advertiser
-didReceiveInvitationFromPeer:(MCPeerID *)peerID
-       withContext:(NSData *)context
- invitationHandler:(void(^)(BOOL accept, MCSession *session))invitationHandler
+- (void)advertiser:(MCNearbyServiceAdvertiser*)advertiser
+    didReceiveInvitationFromPeer:(MCPeerID*)peerID
+                     withContext:(NSData*)context
+               invitationHandler:(void (^)(BOOL accept, MCSession* session))invitationHandler
 {
-  // Only accept invitations with IDs lower than the current host
-  // If both people accept invitations, then connections are lost
-  // However, this should always be the case since we only send invites in one direction
-  if ([peerID.displayName compare:self.peerID.displayName] == NSOrderedDescending)
-  {
-    invitationHandler(YES, self.session);
-  }
+    // Only accept invitations with IDs lower than the current host
+    // If both people accept invitations, then connections are lost
+    // However, this should always be the case since we only send invites in one direction
+    if ([peerID.displayName compare:self.peerID.displayName] == NSOrderedDescending) {
+        invitationHandler(YES, self.session);
+    }
 }
 
-- (void)advertiser:(MCNearbyServiceAdvertiser *)advertiser didNotStartAdvertisingPeer:(NSError *)error
+- (void)advertiser:(MCNearbyServiceAdvertiser*)advertiser didNotStartAdvertisingPeer:(NSError*)error
 {
-  [self.delegate partyTime:self failedToJoinParty:error];
+    [self.delegate partyTime:self failedToJoinParty:error];
 }
 
 #pragma mark - Browser Delegate
 
-- (void)browser:(MCNearbyServiceBrowser *)browser foundPeer:(MCPeerID *)peerID withDiscoveryInfo:(NSDictionary *)info
+- (void)browser:(MCNearbyServiceBrowser*)browser foundPeer:(MCPeerID*)peerID withDiscoveryInfo:(NSDictionary*)info
 {
-  // Whenever we find a peer, let's just send them an invitation
-  // But only send invites one way
-  // TODO: What if display names are the same?
-  // TODO: Make timeout configurable
-  if ([peerID.displayName compare:self.peerID.displayName] == NSOrderedAscending)
-  {
-    NSLog(@"Sending invite: Self: %@", self.peerID.displayName);
-    [browser invitePeer:peerID
-              toSession:self.session
-            withContext:nil
-                timeout:10];
-  }
+    // Whenever we find a peer, let's just send them an invitation
+    // But only send invites one way
+    // TODO: What if display names are the same?
+    // TODO: Make timeout configurable
+    if ([peerID.displayName compare:self.peerID.displayName] == NSOrderedAscending) {
+        NSLog(@"Sending invite: Self: %@", self.peerID.displayName);
+        [browser invitePeer:peerID
+                  toSession:self.session
+                withContext:nil
+                    timeout:10];
+    }
 }
 
-- (void)browser:(MCNearbyServiceBrowser *)browser lostPeer:(MCPeerID *)peerID
+- (void)browser:(MCNearbyServiceBrowser*)browser lostPeer:(MCPeerID*)peerID
 {
-  // Ignore this. We don't need it.
+    // Ignore this. We don't need it.
 }
 
-- (void)browser:(MCNearbyServiceBrowser *)browser didNotStartBrowsingForPeers:(NSError *)error
+- (void)browser:(MCNearbyServiceBrowser*)browser didNotStartBrowsingForPeers:(NSError*)error
 {
-  [self.delegate partyTime:self failedToJoinParty:error];
+    [self.delegate partyTime:self failedToJoinParty:error];
 }
-
 
 @end

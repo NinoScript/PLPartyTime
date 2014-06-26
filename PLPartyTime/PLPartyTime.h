@@ -11,7 +11,6 @@
 
 @protocol PLPartyTimeDelegate;
 
-
 /**
  This is a light wrapper around the MultiPeer connectivity framework which quickly connects devices without having to send or receive invites. Here's the quick setup:
 
@@ -48,7 +47,7 @@
 /// Query whether the client has joined the party
 @property (nonatomic, readonly) BOOL connected;
 /// Returns the serviceType which was passed in when the object was initialized.
-@property (nonatomic, readonly, strong) NSString *serviceType;
+@property (nonatomic, readonly, strong) NSString* serviceType;
 
 #pragma mark - Initialization
 
@@ -123,6 +122,6 @@
  Most of this is self documenting, so I'm going to leave documentation out right now...I'm a little tired of writing documentation for now.
  */
 @protocol PLPartyTimeDelegate <NSObject>
-- (void)partyTime:(PLPartyTime *)partyTime
-failedToJoinParty:(NSError *)error;
+- (void)partyTime:(PLPartyTime*)partyTime
+    failedToJoinParty:(NSError*)error;
 @end
