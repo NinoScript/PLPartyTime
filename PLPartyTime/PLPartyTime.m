@@ -7,20 +7,24 @@
 //
 
 #import "PLPartyTime.h"
+#import "PLPartyTimeAdvertiser.h"
+#import "PLPartyTimeBrowser.h"
 
-@interface PLPartyTime () <MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate>
+@interface PLPartyTime () <PLPartyTimeAdvertiserDelegate, PLPartyTimeBrowserDelegate>
 
 // Public Properties
 @property (nonatomic, readwrite) BOOL connected;
 @property (nonatomic, readwrite) BOOL acceptingGuests;
-@property (nonatomic, readwrite, strong) NSString* serviceType;
 
 // External Properties
+@property (nonatomic, strong) NSString* serviceType;
 @property (nonatomic, strong) MCSession* session;
 @property (nonatomic, strong) MCPeerID* peerID;
 
 // Internal Properties
+@property (nonatomic, strong) PLPartyTimeAdvertiser* partyTimeAdvertiser;
 @property (nonatomic, strong) MCNearbyServiceAdvertiser* advertiser;
+@property (nonatomic, strong) PLPartyTimeBrowser* partyTimeBrowser;
 @property (nonatomic, strong) MCNearbyServiceBrowser* browser;
 
 @end
@@ -38,9 +42,15 @@
 
     self = [super init];
     if (self) {
+        self.serviceType = serviceType;
         self.session = session;
         self.peerID = peerID;
-        self.serviceType = serviceType;
+
+        self.partyTimeAdvertiser = [[PLPartyTimeAdvertiser alloc] initWithSession:self.session
+                                                                           peerID:self.peerID];
+
+        self.partyTimeBrowser = [[PLPartyTimeBrowser alloc] initWithSession:self.session
+                                                                     peerID:self.peerID];
     }
     return self;
 }
@@ -95,7 +105,7 @@
         _advertiser = [[MCNearbyServiceAdvertiser alloc] initWithPeer:self.peerID
                                                         discoveryInfo:nil
                                                           serviceType:self.serviceType];
-        _advertiser.delegate = self;
+        _advertiser.delegate = self.partyTimeAdvertiser;
     }
     return _advertiser;
 }
@@ -106,54 +116,23 @@
         NSAssert(self.serviceType, @"No service type. You must initialize this class using the custom intializers.");
         _browser = [[MCNearbyServiceBrowser alloc] initWithPeer:self.peerID
                                                     serviceType:self.serviceType];
-        _browser.delegate = self;
+        _browser.delegate = self.partyTimeBrowser;
     }
     return _browser;
 }
 
-#pragma mark - Advertiser Delegate
+#pragma mark - PartyTimeAdvertiser Delegate
 
-- (void)advertiser:(MCNearbyServiceAdvertiser*)advertiser
-    didReceiveInvitationFromPeer:(MCPeerID*)peerID
-                     withContext:(NSData*)context
-               invitationHandler:(void (^)(BOOL accept, MCSession* session))invitationHandler
-{
-    // Only accept invitations with IDs lower than the current host
-    // If both people accept invitations, then connections are lost
-    // However, this should always be the case since we only send invites in one direction
-    if ([peerID.displayName compare:self.peerID.displayName] == NSOrderedDescending) {
-        invitationHandler(YES, self.session);
-    }
-}
-
-- (void)advertiser:(MCNearbyServiceAdvertiser*)advertiser didNotStartAdvertisingPeer:(NSError*)error
+- (void)partyTimeAdvertiser:(PLPartyTimeAdvertiser*)partyTimeAdvertiser
+          failedToJoinParty:(NSError*)error
 {
     [self.delegate partyTime:self failedToJoinParty:error];
 }
 
-#pragma mark - Browser Delegate
+#pragma mark - PartyTimeAdvertiser Delegate
 
-- (void)browser:(MCNearbyServiceBrowser*)browser foundPeer:(MCPeerID*)peerID withDiscoveryInfo:(NSDictionary*)info
-{
-    // Whenever we find a peer, let's just send them an invitation
-    // But only send invites one way
-    // TODO: What if display names are the same?
-    // TODO: Make timeout configurable
-    if ([peerID.displayName compare:self.peerID.displayName] == NSOrderedAscending) {
-        NSLog(@"Sending invite: Self: %@", self.peerID.displayName);
-        [browser invitePeer:peerID
-                  toSession:self.session
-                withContext:nil
-                    timeout:10];
-    }
-}
-
-- (void)browser:(MCNearbyServiceBrowser*)browser lostPeer:(MCPeerID*)peerID
-{
-    // Ignore this. We don't need it.
-}
-
-- (void)browser:(MCNearbyServiceBrowser*)browser didNotStartBrowsingForPeers:(NSError*)error
+- (void)partyTimeBrowser:(PLPartyTimeBrowser*)partyTimeBrowser
+       failedToJoinParty:(NSError*)error
 {
     [self.delegate partyTime:self failedToJoinParty:error];
 }
